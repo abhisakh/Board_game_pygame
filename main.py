@@ -143,7 +143,7 @@ class Ball:
         Ball movement speed.
     color : tuple[int, int, int]
         RGB color of the ball.
-    x_fac, y_fac : int
+    x_fac, y_fac : float
         Direction factors for movement along axes.
     """
 
@@ -154,14 +154,14 @@ class Ball:
         self.radius = radius
         self.speed = speed * 0.5
         self.color = color
-        self.x_fac = 1
-        self.y_fac = -1
+        self.x_fac = 1.0
+        self.y_fac = -1.0
         self.first_time = True
 
     def display(self):
         """Draw the ball on the screen."""
-        self.ball = pygame.draw.circle(
-            screen, self.color, (self.pos_x, self.pos_y), self.radius
+        pygame.draw.circle(
+            screen, self.color, (int(self.pos_x), int(self.pos_y)), self.radius
         )
 
     def update(self):
@@ -177,14 +177,14 @@ class Ball:
         self.pos_y += self.speed * self.y_fac
 
         # Reflect from top or bottom
-        if self.pos_y <= 0 or self.pos_y >= HEIGHT:
+        if self.pos_y - self.radius <= 0 or self.pos_y + self.radius >= HEIGHT:
             self.y_fac *= -1
 
         # Score detection
-        if self.pos_x <= 0 and self.first_time:
+        if self.pos_x - self.radius <= 0 and self.first_time:
             self.first_time = False
             return 1  # Right player scores
-        elif self.pos_x >= WIDTH and self.first_time:
+        elif self.pos_x + self.radius >= WIDTH and self.first_time:
             self.first_time = False
             return -1  # Left player scores
         return 0
@@ -194,6 +194,7 @@ class Ball:
         self.pos_x = WIDTH // 2
         self.pos_y = HEIGHT // 2
         self.x_fac *= -1
+        self.y_fac = -1 if self.y_fac > 0 else 1
         self.first_time = True
 
     def hit(self, paddle):
@@ -205,17 +206,103 @@ class Ball:
         paddle : Striker
             The paddle the ball has collided with.
         """
-        # Slight angle variation based on where it hit the paddle
-        offset = (self.pos_y - paddle.pos_y) / paddle.height - 0.5
-        self.y_fac = offset * 2
-        self.x_fac *= -1
+        # Calculate where on paddle the ball hit (-0.5 to 0.5)
+        offset = ((self.pos_y - paddle.pos_y) / paddle.height) - 0.5
+        self.y_fac = offset * 2  # vary vertical speed
+        self.x_fac *= -1  # reverse horizontal direction
 
     def get_rect(self):
         """Return the current ball rectangle."""
         return pygame.Rect(
-            self.pos_x - self.radius, self.pos_y - self.radius,
-            2 * self.radius, 2 * self.radius
+            int(self.pos_x) - self.radius,
+            int(self.pos_y) - self.radius,
+            2 * self.radius,
+            2 * self.radius,
         )
+
+
+# ---------- START SCREEN ------------------------
+def start_screen():
+    """Display a welcome screen until a key is pressed."""
+    screen.fill(BLACK)
+    title_font = pygame.font.Font('freesansbold.ttf', 50)
+    title_text = title_font.render("Welcome to Pong!", True, WHITE)
+    instruction_text = font20.render("Press any key to start", True, WHITE)
+
+    title_rect = title_text.get_rect(center=(WIDTH // 2, HEIGHT // 3))
+    instruction_rect = instruction_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+
+    screen.blit(title_text, title_rect)
+    screen.blit(instruction_text, instruction_rect)
+    pygame.display.update()
+
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            elif event.type == pygame.KEYDOWN:
+                waiting = False
+
+
+# --------- EXIT BUTTON ---------------------------------
+def draw_exit_button(screen, running):
+    """
+    Draw an always-active Exit button on the screen.
+    Check for mouse click on the button to quit the game.
+
+    Parameters
+    ----------
+    screen : pygame.Surface
+        The main game screen to draw the button on.
+    running : bool
+        The current game loop state; returns False if exit clicked.
+
+    Returns
+    -------
+    bool
+        Updated running state (False if exit clicked, else unchanged).
+    """
+
+    # Button properties
+    width, height = screen.get_size()
+    exit_button_rect = pygame.Rect(width - 100, 10, 80, 40)  # Position & size
+    button_color = (200, 0, 0)
+    button_hover_color = (255, 0, 0)
+    button_text_color = (255, 255, 255)
+    font = pygame.font.Font(None, 30)
+
+    mouse_pos = pygame.mouse.get_pos()
+    mouse_clicked = pygame.mouse.get_pressed()[0]
+
+    # Change color on hover and check click
+    if exit_button_rect.collidepoint(mouse_pos):
+        color = button_hover_color
+        if mouse_clicked:
+            running = False
+    else:
+        color = button_color
+
+    # Draw button rectangle and text
+    pygame.draw.rect(screen, color, exit_button_rect)
+    text_surface = font.render("Exit", True, button_text_color)
+    text_rect = text_surface.get_rect(center=exit_button_rect.center)
+    screen.blit(text_surface, text_rect)
+
+        # Draw outer border
+    border_color = (0, 255, 0)  # Green
+    border_thickness = 3
+    border_rect = exit_button_rect.inflate(border_thickness * 2, border_thickness * 2)
+    pygame.draw.rect(screen, border_color, border_rect)
+
+    # Draw button rectangle and text
+    pygame.draw.rect(screen, color, exit_button_rect)
+    text_surface = font.render("Exit", True, button_text_color)
+    text_rect = text_surface.get_rect(center=exit_button_rect.center)
+    screen.blit(text_surface, text_rect)
+
+    return running
 
 
 # ------------------------------------------------------------
@@ -235,9 +322,15 @@ def main():
     green_score, red_score = 0, 0
     green_y_fac, red_y_fac = 0, 0
 
+    start_screen()
+
     # Game loop
     while running:
         screen.fill(BLACK)
+
+        # Draw center dividing line
+        for y in range(0, HEIGHT, 30):
+            pygame.draw.rect(screen, WHITE, (WIDTH // 2 - 5, y, 10, 20))
 
         # Event handling
         for event in pygame.event.get():
@@ -282,7 +375,7 @@ def main():
             pygame.time.wait(700)
             ball.reset()
 
-        # Draw score banner
+        # Draw score banner background
         pygame.draw.rect(screen, GREY, (0, 0, WIDTH, 40))
 
         # Draw game objects
@@ -290,9 +383,18 @@ def main():
         red_player.display()
         ball.display()
 
-        # Display scores
-        green_player.display_score("Green: ", green_score, 100, 20, WHITE)
-        red_player.display_score("Red: ", red_score, WIDTH - 100, 20, WHITE)
+        # Display scores bigger and centered at top
+        green_score_text = font20.render(str(green_score), True, WHITE)
+        red_score_text = font20.render(str(red_score), True, WHITE)
+
+        green_rect = green_score_text.get_rect(center=(WIDTH // 4, 30))
+        red_rect = red_score_text.get_rect(center=(3 * WIDTH // 4, 30))
+
+        screen.blit(green_score_text, green_rect)
+        screen.blit(red_score_text, red_rect)
+
+        # Draw exit button last so it's on top and always visible
+        running = draw_exit_button(screen, running)
 
         pygame.display.update()
         clock.tick(FPS)
