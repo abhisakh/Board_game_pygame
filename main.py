@@ -1,78 +1,60 @@
-"""
-main.py
---------
-
-A simple Pong game implemented using Pygame.
-
-This module initializes the game, defines the player paddles (Strikers),
-the ball, and handles game events such as movement, collisions,
-and scoring.
-
-Features
---------
-- Two-player Pong game using keyboard controls.
-- Smooth paddle and ball movement.
-- Basic collision detection and scoring.
-- Simple on-screen scoreboard and restart after point.
-
-Controls
---------
-Player 1 (Green): W (up), S (down)
-Player 2 (Red):   UP (↑), DOWN (↓)
-Press the close button to quit.
-"""
-
 import pygame
+import math
+import sys
 
 # ------------------------------------------------------------
-# Initialization
+# Initialization and Constants
 # ------------------------------------------------------------
+
 pygame.init()
 
-# Font for text rendering
-font20 = pygame.font.Font('freesansbold.ttf', 20)
+# Screen dimensions
+WIDTH, HEIGHT = 900, 600
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("🏓 Pong Game")
 
-# RGB color constants
+# Clock and FPS
+clock = pygame.time.Clock()
+FPS = 60
+
+# Colors
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
 GREY = (40, 40, 40)
 
-# Screen setup
-WIDTH, HEIGHT = 900, 600
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("🏓 Pong Game")
-
-clock = pygame.time.Clock()
-FPS = 60
-# Game configuration
-WINNING_SCORE = 5  # Number of points needed to win the match
+# Font
+font20 = pygame.font.Font('freesansbold.ttf', 20)
 
 
 # ------------------------------------------------------------
 # Striker (Paddle) Class
 # ------------------------------------------------------------
+
 class Striker:
     """
     Represents a paddle (striker) controlled by a player.
 
     Attributes
     ----------
-    pos_x, pos_y : int
-        Current coordinates of the paddle.
-    width, height : int
-        Dimensions of the paddle.
+    pos_x : int
+        Horizontal position of the paddle.
+    pos_y : int
+        Vertical position of the paddle.
+    width : int
+        Paddle width.
+    height : int
+        Paddle height.
     speed : int
-        Speed of movement per frame.
+        Movement speed per frame.
     color : tuple[int, int, int]
-        RGB color value.
+        RGB color of the paddle.
     player_rect : pygame.Rect
-        Used for positioning and collision detection.
+        Rectangle representing the paddle position and size.
     """
 
     def __init__(self, pos_x, pos_y, width, height, speed, color):
-        """Initialize the paddle."""
         self.pos_x = pos_x
         self.pos_y = pos_y
         self.width = width
@@ -85,9 +67,9 @@ class Striker:
         """Draw the paddle on the screen."""
         pygame.draw.rect(screen, self.color, self.player_rect)
 
-    def update(self, y_fac):
+    def update(self, y_fac: int):
         """
-        Update paddle position based on movement direction.
+        Update the paddle position.
 
         Parameters
         ----------
@@ -95,62 +77,44 @@ class Striker:
             Direction factor (-1 for up, 1 for down, 0 for no movement).
         """
         self.pos_y += self.speed * y_fac
-
-        # Restrict movement within screen boundaries
+        # Clamp within screen
         self.pos_y = max(0, min(self.pos_y, HEIGHT - self.height))
-
-        # Update paddle position
-        self.player_rect = pygame.Rect(
-            self.pos_x, self.pos_y, self.width, self.height
-        )
-
-    def display_score(self, text, score, x, y, color):
-        """
-        Display the player score.
-
-        Parameters
-        ----------
-        text : str
-            Label for the score.
-        score : int
-            Current score value.
-        x, y : int
-            Coordinates for score display.
-        color : tuple[int, int, int]
-            RGB color for text.
-        """
-        label = font20.render(f"{text}{score}", True, color)
-        rect = label.get_rect(center=(x, y))
-        screen.blit(label, rect)
+        self.player_rect.topleft = (self.pos_x, self.pos_y)
 
     def get_rect(self):
-        """Return the current paddle rectangle."""
+        """Return the paddle's rectangle for collision detection."""
         return self.player_rect
 
 
 # ------------------------------------------------------------
 # Ball Class
 # ------------------------------------------------------------
+
 class Ball:
     """
-    Represents the game ball that bounces between paddles.
+    Represents the pong ball.
 
     Attributes
     ----------
-    pos_x, pos_y : int
-        Current position of the ball.
+    pos_x : float
+        Horizontal position of the ball.
+    pos_y : float
+        Vertical position of the ball.
     radius : int
         Radius of the ball.
     speed : float
-        Ball movement speed.
+        Movement speed of the ball.
     color : tuple[int, int, int]
         RGB color of the ball.
-    x_fac, y_fac : float
-        Direction factors for movement along axes.
+    x_fac : float
+        Horizontal movement direction factor.
+    y_fac : float
+        Vertical movement direction factor.
+    first_time : bool
+        Flag for scoring detection.
     """
 
     def __init__(self, pos_x, pos_y, radius, speed, color):
-        """Initialize the ball."""
         self.pos_x = pos_x
         self.pos_y = pos_y
         self.radius = radius
@@ -162,27 +126,25 @@ class Ball:
 
     def display(self):
         """Draw the ball on the screen."""
-        pygame.draw.circle(
-            screen, self.color, (int(self.pos_x), int(self.pos_y)), self.radius
-        )
+        pygame.draw.circle(screen, self.color, (int(self.pos_x), int(self.pos_y)), self.radius)
 
-    def update(self):
+    def update(self) -> int:
         """
-        Move the ball and detect wall collisions.
+        Update the ball's position and check for wall collisions.
 
         Returns
         -------
         int
-            -1 if Player 1 scores, +1 if Player 2 scores, 0 otherwise.
+            -1 if left player scores, 1 if right player scores, 0 otherwise.
         """
         self.pos_x += self.speed * self.x_fac
         self.pos_y += self.speed * self.y_fac
 
-        # Reflect from top or bottom
+        # Bounce off top/bottom
         if self.pos_y - self.radius <= 0 or self.pos_y + self.radius >= HEIGHT:
             self.y_fac *= -1
 
-        # Score detection
+        # Check scoring
         if self.pos_x - self.radius <= 0 and self.first_time:
             self.first_time = False
             return 1  # Right player scores
@@ -192,29 +154,28 @@ class Ball:
         return 0
 
     def reset(self):
-        """Reset the ball to the center and reverse direction."""
+        """Reset the ball position and direction after a score."""
         self.pos_x = WIDTH // 2
         self.pos_y = HEIGHT // 2
         self.x_fac *= -1
         self.y_fac = -1 if self.y_fac > 0 else 1
         self.first_time = True
 
-    def hit(self, paddle):
+    def hit(self, paddle: Striker):
         """
         Reflect the ball when it hits a paddle.
 
         Parameters
         ----------
         paddle : Striker
-            The paddle the ball has collided with.
+            The paddle the ball collided with.
         """
-        # Calculate where on paddle the ball hit (-0.5 to 0.5)
         offset = ((self.pos_y - paddle.pos_y) / paddle.height) - 0.5
-        self.y_fac = offset * 2  # vary vertical speed
-        self.x_fac *= -1  # reverse horizontal direction
+        self.y_fac = offset * 2  # Adjust vertical speed
+        self.x_fac *= -1  # Reverse horizontal direction
 
-    def get_rect(self):
-        """Return the current ball rectangle."""
+    def get_rect(self) -> pygame.Rect:
+        """Return the bounding rectangle of the ball for collision detection."""
         return pygame.Rect(
             int(self.pos_x) - self.radius,
             int(self.pos_y) - self.radius,
@@ -223,104 +184,138 @@ class Ball:
         )
 
 
-# ---------- START SCREEN ------------------------
-def start_screen():
-    """Display a welcome screen until a key is pressed."""
-    screen.fill(BLACK)
-    title_font = pygame.font.Font('freesansbold.ttf', 50)
-    title_text = title_font.render("Welcome to Pong!", True, WHITE)
-    instruction_text = font20.render("Press any key to start", True, WHITE)
+# ------------------------------------------------------------
+# Utility Functions
+# ------------------------------------------------------------
 
-    title_rect = title_text.get_rect(center=(WIDTH // 2, HEIGHT // 3))
-    instruction_rect = instruction_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
-
-    screen.blit(title_text, title_rect)
-    screen.blit(instruction_text, instruction_rect)
-    pygame.display.update()
-
-    waiting = True
-    while waiting:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                exit()
-            elif event.type == pygame.KEYDOWN:
-                waiting = False
-
-
-# --------- EXIT BUTTON ---------------------------------
-def draw_exit_button(screen, running):
+def draw_exit_button(screen: pygame.Surface, running: bool) -> bool:
     """
-    Draw an always-active Exit button on the screen.
-    Check for mouse click on the button to quit the game.
+    Draws an Exit button and checks for clicks to quit.
 
     Parameters
     ----------
     screen : pygame.Surface
-        The main game screen to draw the button on.
+        The screen to draw on.
     running : bool
-        The current game loop state; returns False if exit clicked.
+        Current running state.
 
     Returns
     -------
     bool
-        Updated running state (False if exit clicked, else unchanged).
+        Updated running state (False if exit clicked).
     """
-
-    # Button properties
     width, height = screen.get_size()
-    exit_button_rect = pygame.Rect(width - 100, 10, 80, 40)  # Position & size
+    exit_rect = pygame.Rect(width - 100, 10, 80, 40)
     button_color = (200, 0, 0)
     button_hover_color = (255, 0, 0)
-    button_text_color = (255, 255, 255)
+    button_text_color = WHITE
     font = pygame.font.Font(None, 30)
 
     mouse_pos = pygame.mouse.get_pos()
-    mouse_clicked = pygame.mouse.get_pressed()[0]
+    mouse_pressed = pygame.mouse.get_pressed()[0]
 
-    # Change color on hover and check click
-    if exit_button_rect.collidepoint(mouse_pos):
+    if exit_rect.collidepoint(mouse_pos):
         color = button_hover_color
-        if mouse_clicked:
-            running = False
+        if mouse_pressed:
+            return False
     else:
         color = button_color
 
-    # Draw button rectangle and text
-    pygame.draw.rect(screen, color, exit_button_rect)
-    text_surface = font.render("Exit", True, button_text_color)
-    text_rect = text_surface.get_rect(center=exit_button_rect.center)
-    screen.blit(text_surface, text_rect)
+    pygame.draw.rect(screen, color, exit_rect)
+    pygame.draw.rect(screen, GREEN, exit_rect.inflate(6, 6), 3)  # border
 
-        # Draw outer border
-    border_color = (0, 255, 0)  # Green
-    border_thickness = 3
-    border_rect = exit_button_rect.inflate(border_thickness * 2, border_thickness * 2)
-    pygame.draw.rect(screen, border_color, border_rect)
-
-    # Draw button rectangle and text
-    pygame.draw.rect(screen, color, exit_button_rect)
     text_surface = font.render("Exit", True, button_text_color)
-    text_rect = text_surface.get_rect(center=exit_button_rect.center)
+    text_rect = text_surface.get_rect(center=exit_rect.center)
     screen.blit(text_surface, text_rect)
 
     return running
 
 
-def game_over_screen(winner):
+def draw_gradient(surface: pygame.Surface, time_val: float):
+    """
+    Draw a dynamic vertical gradient based on a sine wave for colors.
+
+    Parameters
+    ----------
+    surface : pygame.Surface
+        Surface to draw on.
+    time_val : float
+        Time value to animate colors.
+    """
+    height = surface.get_height()
+    width = surface.get_width()
+
+    for y in range(height):
+        ratio = y / height
+        # Sine wave color cycling
+        r = int((1 + math.sin(time_val + ratio * 5)) * 127)
+        g = int((1 + math.sin(time_val + ratio * 5 + 2)) * 127)
+        b = int((1 + math.sin(time_val + ratio * 5 + 4)) * 127)
+        pygame.draw.line(surface, (r, g, b), (0, y), (width, y))
+
+
+def start_screen():
+    """
+    Display a colorful welcome screen with animated gradient background
+    until the player presses any key.
+    """
+    running = True
+    title_font = pygame.font.SysFont('freesansbold.ttf', 80)
+    subtitle_font = pygame.font.SysFont('freesansbold.ttf', 30)
+    small_font = pygame.font.SysFont('freesansbold.ttf', 20)
+
+    while running:
+        time_val = pygame.time.get_ticks() / 700  # slow color cycling
+        draw_gradient(screen, time_val)
+
+        # Render title text with shadow
+        title_text = title_font.render("PONG GAME", True, WHITE)
+        shadow_text = title_font.render("PONG GAME", True, BLACK)
+
+        title_rect = title_text.get_rect(center=(WIDTH // 2, HEIGHT // 3))
+        shadow_rect = shadow_text.get_rect(center=(WIDTH // 2 + 3, HEIGHT // 3 + 3))
+
+        screen.blit(shadow_text, shadow_rect)
+        screen.blit(title_text, title_rect)
+
+        # Animated subtitle color
+        r = int((1 + math.sin(time_val)) * 127)
+        g = int((1 + math.sin(time_val + 2)) * 127)
+        b = int((1 + math.sin(time_val + 4)) * 127)
+        subtitle_color = (r, g, b)
+
+        subtitle_text = subtitle_font.render("🏓 Two Player Pong Game 🏓", True, subtitle_color)
+        subtitle_rect = subtitle_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+        screen.blit(subtitle_text, subtitle_rect)
+
+        instruction_text = small_font.render("Press any key to start", True, WHITE)
+        instruction_rect = instruction_text.get_rect(center=(WIDTH // 2, HEIGHT - 50))
+        screen.blit(instruction_text, instruction_rect)
+
+        pygame.display.update()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                running = False
+
+
+def game_over_screen(winner: str) -> bool:
     """
     Display the game over screen showing the winner.
-    Waits for player to press R (restart) or Q (quit).
+    Wait for R to restart or Q to quit.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     winner : str
-        The name or color of the winning player.
+        Winner name.
 
-    Returns:
-    --------
+    Returns
+    -------
     bool
-        True if the player wants to restart, False to quit.
+        True if restarting, False if quitting.
     """
     screen.fill(BLACK)
     large_font = pygame.font.Font('freesansbold.ttf', 60)
@@ -341,19 +336,22 @@ def game_over_screen(winner):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
-                exit()
+                sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
-                    return True  # Restart
+                    return True
                 elif event.key == pygame.K_q:
-                    return False  # Quit
+                    return False
 
 
 # ------------------------------------------------------------
 # Main Game Loop
 # ------------------------------------------------------------
+
 def main():
-    """Run the Pong game."""
+    """
+    Run the Pong game.
+    """
     running = True
     WINNING_SCORE = 5  # Number of points needed to win
 
@@ -365,7 +363,6 @@ def main():
     players = [green_player, red_player]
 
     green_score, red_score = 0, 0
-    green_y_fac, red_y_fac = 0, 0
 
     start_screen()
 
@@ -382,22 +379,10 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
 
-            # Movement keys
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
-                    red_y_fac = -1
-                elif event.key == pygame.K_DOWN:
-                    red_y_fac = 1
-                elif event.key == pygame.K_w:
-                    green_y_fac = -1
-                elif event.key == pygame.K_s:
-                    green_y_fac = 1
-
-            if event.type == pygame.KEYUP:
-                if event.key in (pygame.K_UP, pygame.K_DOWN):
-                    red_y_fac = 0
-                if event.key in (pygame.K_w, pygame.K_s):
-                    green_y_fac = 0
+        # ------------------ SMOOTH PADDLE CONTROL ------------------
+        keys = pygame.key.get_pressed()
+        green_y_fac = -1 if keys[pygame.K_w] else 1 if keys[pygame.K_s] else 0
+        red_y_fac = -1 if keys[pygame.K_UP] else 1 if keys[pygame.K_DOWN] else 0
 
         # ------------------ COLLISIONS ------------------
         for player in players:
@@ -426,7 +411,6 @@ def main():
             if restart:
                 green_score, red_score = 0, 0
                 ball.reset()
-                green_y_fac, red_y_fac = 0, 0
                 continue
             else:
                 running = False
@@ -452,9 +436,5 @@ def main():
     pygame.quit()
 
 
-
-# ------------------------------------------------------------
-# Entry Point
-# ------------------------------------------------------------
 if __name__ == "__main__":
     main()
