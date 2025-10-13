@@ -46,6 +46,8 @@ pygame.display.set_caption("🏓 Pong Game")
 
 clock = pygame.time.Clock()
 FPS = 60
+# Game configuration
+WINNING_SCORE = 5  # Number of points needed to win the match
 
 
 # ------------------------------------------------------------
@@ -305,12 +307,55 @@ def draw_exit_button(screen, running):
     return running
 
 
+def game_over_screen(winner):
+    """
+    Display the game over screen showing the winner.
+    Waits for player to press R (restart) or Q (quit).
+
+    Parameters:
+    -----------
+    winner : str
+        The name or color of the winning player.
+
+    Returns:
+    --------
+    bool
+        True if the player wants to restart, False to quit.
+    """
+    screen.fill(BLACK)
+    large_font = pygame.font.Font('freesansbold.ttf', 60)
+    small_font = pygame.font.Font('freesansbold.ttf', 30)
+
+    winner_text = large_font.render(f"{winner} Wins!", True, WHITE)
+    restart_text = small_font.render("Press R to Restart or Q to Quit", True, WHITE)
+
+    winner_rect = winner_text.get_rect(center=(WIDTH // 2, HEIGHT // 3))
+    restart_rect = restart_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+
+    screen.blit(winner_text, winner_rect)
+    screen.blit(restart_text, restart_rect)
+    pygame.display.update()
+
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:
+                    return True  # Restart
+                elif event.key == pygame.K_q:
+                    return False  # Quit
+
+
 # ------------------------------------------------------------
 # Main Game Loop
 # ------------------------------------------------------------
 def main():
     """Run the Pong game."""
     running = True
+    WINNING_SCORE = 5  # Number of points needed to win
 
     # Initialize paddles and ball
     green_player = Striker(20, HEIGHT // 2 - 50, 10, 100, 10, GREEN)
@@ -324,7 +369,7 @@ def main():
 
     start_screen()
 
-    # Game loop
+    # ------------------ MAIN LOOP ------------------
     while running:
         screen.fill(BLACK)
 
@@ -332,7 +377,7 @@ def main():
         for y in range(0, HEIGHT, 30):
             pygame.draw.rect(screen, WHITE, (WIDTH // 2 - 5, y, 10, 20))
 
-        # Event handling
+        # ------------------ EVENT HANDLING ------------------
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -354,52 +399,58 @@ def main():
                 if event.key in (pygame.K_w, pygame.K_s):
                     green_y_fac = 0
 
-        # Collision detection
+        # ------------------ COLLISIONS ------------------
         for player in players:
             if pygame.Rect.colliderect(ball.get_rect(), player.get_rect()):
                 ball.hit(player)
 
-        # Update positions
+        # ------------------ UPDATE OBJECTS ------------------
         green_player.update(green_y_fac)
         red_player.update(red_y_fac)
         point = ball.update()
 
-        # Update scores
+        # ------------------ SCORE LOGIC ------------------
         if point == -1:
             green_score += 1
         elif point == 1:
             red_score += 1
 
-        # Reset after scoring
         if point:
             pygame.time.wait(700)
             ball.reset()
 
-        # Draw score banner background
-        pygame.draw.rect(screen, GREY, (0, 0, WIDTH, 40))
+        # ------------------ CHECK WIN CONDITION ------------------
+        if green_score >= WINNING_SCORE or red_score >= WINNING_SCORE:
+            winner = "Green Player" if green_score >= WINNING_SCORE else "Red Player"
+            restart = game_over_screen(winner)
+            if restart:
+                green_score, red_score = 0, 0
+                ball.reset()
+                green_y_fac, red_y_fac = 0, 0
+                continue
+            else:
+                running = False
 
-        # Draw game objects
+        # ------------------ DRAW ELEMENTS ------------------
+        pygame.draw.rect(screen, GREY, (0, 0, WIDTH, 40))
         green_player.display()
         red_player.display()
         ball.display()
 
-        # Display scores bigger and centered at top
+        # Display scores
         green_score_text = font20.render(str(green_score), True, WHITE)
         red_score_text = font20.render(str(red_score), True, WHITE)
+        screen.blit(green_score_text, (WIDTH // 4, 10))
+        screen.blit(red_score_text, (3 * WIDTH // 4, 10))
 
-        green_rect = green_score_text.get_rect(center=(WIDTH // 4, 30))
-        red_rect = red_score_text.get_rect(center=(3 * WIDTH // 4, 30))
-
-        screen.blit(green_score_text, green_rect)
-        screen.blit(red_score_text, red_rect)
-
-        # Draw exit button last so it's on top and always visible
+        # 🟩 Exit button drawn LAST so it stays visible
         running = draw_exit_button(screen, running)
 
         pygame.display.update()
         clock.tick(FPS)
 
     pygame.quit()
+
 
 
 # ------------------------------------------------------------
