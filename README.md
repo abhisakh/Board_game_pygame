@@ -120,8 +120,6 @@ pygame
 ### ✨ Acknowledgments
 Masterschool
 - For the Codio project.
-OMDb API
-- for the free movies data API
 
 
 ## 🙋‍♂️ Author
