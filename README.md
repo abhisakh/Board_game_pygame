@@ -94,13 +94,14 @@ python main.py
 ```
 ## 📸 Screenshots
 
-![Start Screen](assets/<img width="900" height="600" alt="welcome_screen_screenshot" src="https://github.com/user-attachments/assets/207d43f7-78a0-4f62-a210-b59732be7d82" />
-)
-![Gameplay](assets/<img width="886" height="595" alt="Screenshot 2025-10-13 at 13 57 50" src="https://github.com/user-attachments/assets/c28127d2-9252-4faf-b678-79e9762f7645" />
-)
-![Game Over](assets/<img width="886" height="595" alt="Screenshot 2025-10-13 at 13 57 22" src="https://github.com/user-attachments/assets/ad3b0664-b12f-4fb8-bcbc-697f28a5ad1a" />
-)
+##### [Start Screen]
+<img width="900" height="600" alt="welcome_screen_screenshot" src="https://github.com/user-attachments/assets/207d43f7-78a0-4f62-a210-b59732be7d82" />
 
+##### [Gameplay]
+<img width="886" height="595" alt="Screenshot 2025-10-13 at 13 57 50" src="https://github.com/user-attachments/assets/c28127d2-9252-4faf-b678-79e9762f7645" />
+
+##### [Game Over]
+<img width="886" height="595" alt="Screenshot 2025-10-13 at 13 57 22" src="https://github.com/user-attachments/assets/ad3b0664-b12f-4fb8-bcbc-697f28a5ad1a" />
 
 ## 🧱 Next Planned Upgrades
 
@@ -124,6 +125,9 @@ OMDb API
 
 
 ## 🙋‍♂️ Author
-**Abhisakh Sarma** [Basic game received from the Instructor Victor Miclovich]
+**Abhisakh Sarma** 
 GitHub: [https://github.com/abhisakh](https://github.com/abhisakh)
+
+[Basic game received from the Instructor]
+**Victor Miclovich** [ https://gist.github.com/miclovich/]
 _Contributions and feedback are always welcome!_
