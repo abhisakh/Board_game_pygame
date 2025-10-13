@@ -300,6 +300,16 @@ def start_screen():
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 running = False
+        # for event in pygame.event.get():
+        #     if event.type == pygame.QUIT:
+        #         pygame.quit()
+        #         exit()
+        #     if event.type == pygame.KEYDOWN:
+        #         if event.key == pygame.K_p:  # Press 'P' to take a screenshot
+        #             pygame.image.save(screen, "welcome_screen_screenshot.png")
+        #             print("Screenshot saved as welcome_screen_screenshot.png")
+        #         else:
+        #             running = False
 
 
 def game_over_screen(winner: str) -> bool:
